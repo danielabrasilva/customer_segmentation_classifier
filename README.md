@@ -4,6 +4,7 @@
 
 ### Instructions:
 1. Run the `customer_segmentation.ipynb`
+2. Access https://danielabrsil.medium.com/a-customer-segmentation-report-for-arvato-financial-services-83d459356b2a.
 
 ### Project Motivation
 
