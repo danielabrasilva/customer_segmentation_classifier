@@ -4,7 +4,7 @@
 
 ### Instructions:
 1. Run the `customer_segmentation.ipynb`
-2. Access https://danielabrsil.medium.com/a-customer-segmentation-report-for-arvato-financial-services-83d459356b2a.
+2. Access https://danielabrsil.medium.com/a-customer-segmentation-report-for-arvato-financial-services-83d459356b2a to read the documentation of this work.
 
 ### Project Motivation
 
@@ -14,11 +14,11 @@ The purpose of this project is to identify possible new customers for a German m
 
 There are three project components:
 
- 1. A Python script named `process_data.py`, which clean the data.
+ 1. A Python script `process_data.py`, which clean the data.
  
- 2. A Python script named `clustering.py` with a customer segmentation.
+ 2. A Python script `clustering.py` with a customer segmentation.
        
- 3. A Python script named `classifier.py` which classify individuals in customers or non-customers. 
+ 3. A Python script `classifier.py` which classify individuals in customers or non-customers. 
  
 ### Licensing, Authors, Acknowledgements
 
