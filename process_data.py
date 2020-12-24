@@ -1,7 +1,7 @@
-#
 import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
+
 
 
 
@@ -10,9 +10,6 @@ def load_data(general_df_path, customers_df_path):
     #load general dataset
     azdias = pd.read_csv(general_df_path, sep=';', dtype={'CAMEO_DEUG_2015': str, 'CAMEO_INTL_2015':str})
     customers = pd.read_csv(customers_df_path, sep=';', dtype={'CAMEO_DEUG_2015': str, 'CAMEO_INTL_2015':str})
-
-    azdias['mailout'] = False
-    customers['mailout'] = True
 
     # Store LNR values
     others_id = azdias['LNR'].unique()
@@ -78,21 +75,20 @@ def drop_invariability(df, na_perct=0.9):
     return new_df
 
 
-def clean_data(df, drop_obj=True):
+def clean_data(df):
 
     # Replace non-numeric values
     df['CAMEO_DEUG_2015'] = df['CAMEO_DEUG_2015'].replace('\D', '-1', regex=True)
     df['CAMEO_INTL_2015'] = df['CAMEO_INTL_2015'].replace('\D+', '-1', regex=True)
 
-    if drop_obj == True:
-        # Drop columns with object type
-        aux = (df.dtypes=='object')
-        obj_cols = aux[aux].index.values
+    # Drop categoric columns with more than 2 categories
+    df = df.drop(columns=['CAMEO_DEU_2015', 'CAMEO_DEUG_2015', 'CAMEO_INTL_2015', 'D19_LETZTER_KAUF_BRANCHE', 'EINGEFUEGT_AM'])
 
-        df = df.drop(columns=obj_cols)
-
+    # Drop columns and rows with more than 70% of NaNs
     new_df = drop_na_columns(df=df, na_perct=0.7)
     new_df = drop_na_rows(df=new_df, na_perct=0.7)
+
+    # Drop columns with more than 90% of invariability
     new_df = drop_invariability(new_df, na_perct=0.9)
 
     new_df.reset_index(drop=True, inplace=True)
@@ -104,38 +100,54 @@ def impute_values(df, cols_with_missing):
 
     inputs:
     df(pandas.DataFrame): The Dataframe
-    strategy(str):
-
-    output(pandas.DataFrame): imputed dataframe.
+    output:
+    new_df(pandas.DataFrame): imputed dataframe.
     '''
     # Dataframe with missing values
-    mis_df = df[cols_with_missing]
-
-    # Columns with numerical values
-    num_df = mis_df.loc[:,mis_df.dtypes != 'object'].copy()
-    num_cols = num_df.columns
+    mis_df = df[cols_with_missing].copy()
 
     # Imputation in numerical column
     my_imputer = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-    imputed_num_df = pd.DataFrame(my_imputer.fit_transform(num_df))
-    imputed_num_df.columns = num_cols
-
-    # Columns with categoric values
-    #cat_df = mis_df.loc[:,mis_df.dtypes == 'object'].copy()
-    #cat_cols = cat_df.columns.values
-    #df = df.drop(columns=cat_cols)
+    imputed_df = pd.DataFrame(my_imputer.fit_transform(mis_df))
+    imputed_df.columns = cols_with_missing
 
     # Join each dataframe
     total_cols = df.columns.values
-    no_imputed_cols = np.setdiff1d(total_cols, num_cols)
-    end_df = df[no_imputed_cols].join(imputed_num_df)
+    no_imputed_cols = np.setdiff1d(total_cols, cols_with_missing)
+    new_df = df[no_imputed_cols].join(imputed_df)
 
-    return end_df
+    return new_df
+
+def encode_nans(df, thresh=0.1):
+    """Return a new dataframe with additional boolean columns indicating if there is missing values in a specific
+    column acoording with the treshold of missing values, and return a 1d array with columns with missing values.
+
+    inputs:
+    df (pandas.Dataframe): the dataframe
+    thersh (float): percentage of missing values in a column.
+
+    oututs:
+    new_df(pandas.Dataframe): new dataframe.
+    cols_with_missing(numpy.ndarray): array with missing columns.
+
+    """
+
+    aux = df.isnull().sum().sort_values()
+    cols_with_missing = aux[aux>0]
+    cols_with_missing = cols_with_missing.index.values
+    new_df = df.copy()
+
+    for col in cols_with_missing:
+        if df[col].isnull().sum() > thresh*df.shape[0]:
+            new_df[col+'_was_missing'] = df[col].isnull()
+
+    return new_df, cols_with_missing
 
 
 def save_data(df, df_filename):
     # Store the clean data
     df.to_csv(df_filename, header=df.columns, index=False)
+
 
 def main():
     print("Loading data...\n  ")
@@ -143,32 +155,34 @@ def main():
     print(df.head())
 
     print("\n Cleaning data ... \n")
-    clean_df = clean_data(df, drop_obj=True)
-    print(df.head())
+    clean_df = clean_data(df)
+    print(clean_df.head())
 
-    # Columns and dataframe with missing values
-    aux = clean_df.isnull().sum().sort_values()
-    cols_with_missing = aux[aux>0]
-    cols_with_missing = cols_with_missing.index.values
-
-    for col in cols_with_missing:
-        if clean_df[col].isnull().sum() > 0.1*clean_df.shape[0]:
-            clean_df[col+'_was_missing'] = clean_df[col].isnull()
+    # Encode NaNs
+    new_df, cols_with_missing = encode_nans(clean_df, thresh=0.1)
+    print(new_df.head())
+    # Imputing NaN values
 
     print("\n Imputing nan values ... \n")
-
-    imputed_df = impute_values(df=clean_df, cols_with_missing=cols_with_missing)
+    imputed_df = impute_values(df=new_df, cols_with_missing=cols_with_missing)
     print(imputed_df.head())
 
+    # Dummy variables
+    imputed_df['OST_WEST_KZ'] = pd.get_dummies(imputed_df['OST_WEST_KZ'], prefix='OST_WEST_KZ', drop_first=True)
+
+
     print('\n Saving data ... \n')
-    save_data(imputed_df, 'total_df.csv')
+    total_df = imputed_df.astype('int')
+    save_data(total_df, 'total_df.csv')
     print("The dataset was stored!")
 
-    #others_id = np.intersect1d(others_id, df['LNR'].unique())
-    #customers_id = np.intersect1d(customers_id, df['LNR'].unique())
 
-    #np.savetxt('others_id.out', others_id)
-    #np.savetxt('customers_id.out', customers_id)
+    #Store customers id to compare the results
+    others_id = np.intersect1d(others_id, df['LNR'].unique())
+    customers_id = np.intersect1d(customers_id, df['LNR'].unique())
+
+    np.savetxt('others_id.out', others_id)
+    np.savetxt('customers_id.out', customers_id)
 
 
 if __name__ == '__main__':
