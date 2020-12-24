@@ -3,8 +3,9 @@
 
 
 ### Instructions:
-1. Run the `customer_segmentation.ipynb`
-2. Access https://danielabrsil.medium.com/a-customer-segmentation-report-for-arvato-financial-services-83d459356b2a to read the documentation of this work.
+1. Run the `customer_segmentation.ipynb`, or
+2. Run `process_data.py` followed by `clustering.py` and `classifier.py`.
+3. Access the blog post https://danielabrsil.medium.com/a-customer-segmentation-report-for-arvato-financial-services-83d459356b2a to read the documentation of this work.
 
 ### Project Motivation
 
