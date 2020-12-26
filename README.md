@@ -1,7 +1,6 @@
 # Customer Segmentation and Classifier
 
 
-
 ### Instructions:
 1. Run the `customer_segmentation.ipynb`, or
 2. Run `process_data.py` followed by `clustering.py` and `classifier.py`.
